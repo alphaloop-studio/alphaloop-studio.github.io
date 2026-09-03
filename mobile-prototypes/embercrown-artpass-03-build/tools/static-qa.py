@@ -28,8 +28,8 @@ required = [
 ]
 missing = [item for item in required if not (root / item).exists()]
 
-safe_guard = "function press(el,fn){let last=-Infinity;"
-unsafe_guard = "function press(el,fn){let last=0;"
+safe_guard = "let stamp = -Infinity;"
+unsafe_guard = "let stamp = 0;"
 checks = {
     "duplicate_ids": duplicates,
     "external_script_dependencies": external_scripts,
