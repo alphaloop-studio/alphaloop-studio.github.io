@@ -10,3 +10,5 @@ This folder reconstructs Art Pass 0.3 from the verified Art Pass 0.2 source, the
 6. publishes only the verified output to `mobile-prototypes/embercrown-artpass-03`.
 
 The runtime output has no third-party CDN dependency. The build recipe remains auditable without duplicating large binary assets in source control.
+
+Build trigger revision: 1.
