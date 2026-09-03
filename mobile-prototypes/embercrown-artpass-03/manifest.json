@@ -1,12 +1,17 @@
 {
   "version": "0.3.1-public-hotfix",
-  "html_bytes": 87883,
-  "payload_bytes": 26978,
-  "base64_chars": 35972,
+  "html_bytes": 87899,
+  "payload_bytes": 26990,
+  "base64_chars": 35988,
   "chunks": 6,
-  "sha256": "766bff35725956fc301568f7c52d6909ba32a70932ac0af8da6f6ff813c83ad5",
+  "sha256": "62262bea4150eff04b4d7bfd044123e6decad499916893ddf7e263477794b5a6",
   "first_tap_guard": "stamp=-Infinity",
+  "performance_gate": {
+    "min_avg_fps": 30,
+    "max_p95_ms": 50,
+    "duration_sec": 1200
+  },
   "deployment": "manual-compressed-payload",
-  "browser_qa": "pending-public-execution",
+  "browser_qa": "logic-and-input-stub-passed; public-production-webgl-unverified",
   "device_gate": "pending-real-iphone-20-minute-run"
 }
