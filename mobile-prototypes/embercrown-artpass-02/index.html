@@ -45,5 +45,23 @@
     <div id="rotateHint" class="rotate-hint"><span>↻</span><p>가로 화면에서 전투 시야가 더 넓습니다.</p></div>
   </main>
   <script src="https://cdn.babylonjs.com/babylon.js"></script><script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script><script src="./game.js"></script>
+  <script>
+    (() => {
+      const button = document.getElementById("startButton");
+      if (!button) return;
+      let fired = false;
+      const startImmediately = (event) => {
+        if (fired) return;
+        fired = true;
+        event.preventDefault();
+        const start = window.__EMBER_QA__ && window.__EMBER_QA__.start;
+        if (typeof start === "function") start();
+        else fired = false;
+      };
+      ["pointerup", "touchend", "click"].forEach((type) =>
+        button.addEventListener(type, startImmediately, { capture: true, passive: false })
+      );
+    })();
+  </script>
 </body>
 </html>
