@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="theme-color" content="#080b0c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>EMBERCROWN — The Cinder Oath · Art Pass 0.2</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="app">
+    <canvas id="renderCanvas" aria-label="EMBERCROWN 3D game canvas"></canvas>
+    <section id="titleScreen" class="screen title-screen">
+      <div class="title-vignette"></div>
+      <div class="title-copy">
+        <div class="crown-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <p class="studio">ALPHALOOP · A HANDCRAFTED FANTASY</p>
+        <h1>EMBERCROWN</h1><h2>THE CINDER OATH</h2>
+        <p class="tagline">왕관은 부서졌으나, 맹세의 불씨는 남았다.</p>
+        <button id="startButton" class="start-button" type="button">불씨의 서약을 시작한다</button>
+        <p class="title-note">Babylon.js Art Pass 0.2 · 모바일은 가로 화면 권장</p>
+      </div>
+    </section>
+    <section id="loadingScreen" class="screen loading-screen hidden" aria-live="polite">
+      <div class="loading-sigil"><i></i><i></i><i></i></div><p id="loadingTitle">재와 돌 사이에서 세계를 깨우는 중</p>
+      <div class="loading-track"><span id="loadingBar"></span></div><small id="loadingDetail">전투 무대를 준비하고 있습니다.</small>
+    </section>
+    <section id="errorScreen" class="screen error-screen hidden" role="alert"><div class="error-card"><h2>불씨가 응답하지 않습니다</h2><p id="errorMessage">3D 엔진을 초기화하지 못했습니다.</p><button id="retryButton" type="button">다시 시도</button></div></section>
+    <section id="hud" class="hud hidden" aria-label="게임 정보">
+      <div class="top-left"><div class="portrait"><span class="portrait-ember"></span></div><div class="vitals"><div class="name-row"><strong>불씨의 순례자</strong><span id="levelLabel">Lv. 1</span></div><div class="meter hp"><span id="hpBar"></span><b id="hpText">180 / 180</b></div><div class="meter mp"><span id="mpBar"></span><b id="mpText">100 / 100</b></div></div></div>
+      <aside class="quest-panel"><small>현재 서약</small><strong id="questTitle">잠든 맹세석에 손을 얹어라</strong><span id="questDetail">중앙의 맹세석에 다가가 상호작용하십시오.</span></aside>
+      <div id="bossHud" class="boss-hud hidden"><small>재의 문지기</small><strong>무명 성주 베르칸</strong><div class="boss-meter"><span id="bossBar"></span></div></div>
+      <div id="prompt" class="prompt hidden"><kbd>E</kbd><span>상호작용</span></div><div id="toast" class="toast" aria-live="polite"></div><div id="areaTitle" class="area-title"><small>잿빛 변경</small><strong>맹세의 뜰</strong></div>
+      <div class="bottom-left"><div class="flask">✦ <span id="potionText">3</span></div><div class="asset-state"><span id="assetDot"></span><b id="assetLabel">전용 모델 준비 중</b></div></div>
+      <div class="skill-rail"><div class="skill"><b>검격</b><small>J</small></div><div class="skill ember"><b>불씨</b><small>K</small></div><div class="skill dodge"><b>회피</b><small>SPACE</small></div><div class="skill potion"><b>물약</b><small>Q</small></div></div>
+    </section>
+    <section id="touchControls" class="touch-controls hidden" aria-label="모바일 조작">
+      <div id="joystick" class="joystick" role="group" aria-label="이동 스틱"><span id="joystickKnob"></span></div>
+      <div class="touch-actions"><button id="potionButton" class="action action-potion" type="button">✦<small>물약</small></button><button id="interactButton" class="action action-interact" type="button">◇<small>대화</small></button><button id="spellButton" class="action action-spell" type="button">✹<small>불씨</small></button><button id="dodgeButton" class="action action-dodge" type="button">↝<small>회피</small></button><button id="attackButton" class="action action-attack" type="button">⚔<small>검격</small></button></div>
+    </section>
+    <section id="dialogue" class="dialogue hidden" aria-live="polite"><div class="dialogue-seal">III</div><div><small id="speaker">맹세석</small><p id="dialogueText"></p></div></section>
+    <section id="victoryScreen" class="screen result-screen hidden"><div class="result-card"><div class="result-crown"><i></i><i></i><i></i></div><small>THE CINDER OATH RESTORED</small><h2>불씨의 서약이 이어졌다</h2><p>거대한 왕국을 흉내 내지 않았다.<br />작은 뜰 하나에 기억할 만한 맹세를 남겼다.</p><dl><div><dt>정화한 망령</dt><dd id="killResult">0</dd></div><div><dt>밝힌 길불</dt><dd>3 / 3</dd></div></dl><button id="replayButton" type="button">다시 서약한다</button></div></section>
+    <div id="rotateHint" class="rotate-hint"><span>↻</span><p>가로 화면에서 전투 시야가 더 넓습니다.</p></div>
+  </main>
+  <script src="https://cdn.babylonjs.com/babylon.js"></script><script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script><script src="./game.js"></script>
+</body>
+</html>
