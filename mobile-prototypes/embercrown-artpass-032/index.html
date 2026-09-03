@@ -21,40 +21,45 @@
   <script>
   (() => {
     "use strict";
-    const expectedSha = '10784ec8783d0c604e40b3bbf3f61ef9e95dfc4a1c7c7d6ba601f6ddbb30b441';
-    const chunkCount = 7;
+    const oldSha = "62262bea4150eff04b4d7bfd044123e6decad499916893ddf7e263477794b5a6";
+    const newSha = "10784ec8783d0c604e40b3bbf3f61ef9e95dfc4a1c7c7d6ba601f6ddbb30b441";
+    const patchB64 = "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";
     const message = document.getElementById("message");
     const detail = document.getElementById("detail");
     const retry = document.getElementById("retry");
     retry.addEventListener("click", () => location.reload());
-    const fail = (error) => {
+    const bytes = text => Uint8Array.from(atob(text), c => c.charCodeAt(0));
+    const gunzipText = async input => new Response(new Blob([input]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+    const sha256 = async text => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))), b => b.toString(16).padStart(2,"0")).join("");
+    const fail = error => {
       console.error(error);
       message.textContent = "불씨를 복원하지 못했습니다.";
       message.classList.add("error");
-      detail.textContent = error && error.message ? error.message : String(error);
+      detail.textContent = error?.message || String(error);
       retry.classList.add("show");
     };
-    const hex = buffer => Array.from(new Uint8Array(buffer), value => value.toString(16).padStart(2,"0")).join("");
+    const replaceExactlyOnce = (source, before, after, index) => {
+      const first = source.indexOf(before);
+      if (first < 0 || source.indexOf(before, first + before.length) >= 0) throw new Error(`수정 블록 ${index + 1}의 원본 시그니처가 일치하지 않습니다.`);
+      return source.slice(0, first) + after + source.slice(first + before.length);
+    };
     (async () => {
-      if (!("DecompressionStream" in self)) throw new Error("최신 Safari 또는 Chrome이 필요합니다.");
-      if (!crypto || !crypto.subtle) throw new Error("브라우저 무결성 검사를 사용할 수 없습니다.");
-      const files = Array.from({ length: chunkCount }, (_, index) => `./payload/p${String(index).padStart(2, "0")}.txt`);
-      const parts = await Promise.all(files.map(async file => {
-        const response = await fetch(file, { cache: "no-store" });
-        if (!response.ok) throw new Error(`${file} 응답 오류: HTTP ${response.status}`);
+      if (!("DecompressionStream" in self) || !crypto?.subtle) throw new Error("최신 Safari 또는 Chrome이 필요합니다.");
+      const base = new URL("../embercrown-artpass-03/payload/", document.baseURI);
+      const parts = await Promise.all(Array.from({length:6}, async (_,i) => {
+        const url = new URL(`p${String(i).padStart(2,"0")}.txt`, base);
+        const response = await fetch(url, {cache:"no-store"});
+        if (!response.ok) throw new Error(`기반 데이터 응답 오류: HTTP ${response.status}`);
         return (await response.text()).trim();
       }));
-      detail.textContent = "게임 코드를 해제하고 검증하는 중";
-      const compressed = Uint8Array.from(atob(parts.join("")), character => character.charCodeAt(0));
-      const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("gzip"));
-      const html = await new Response(stream).text();
-      const digest = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(html)));
-      if (digest !== expectedSha || !html.includes("Art Pass 0.3.2") || !html.includes("function movementBasis()") || !html.includes("createInitialWights();")) {
-        throw new Error("복원된 수정판의 무결성 검사가 실패했습니다.");
-      }
-      document.open();
-      document.write(html);
-      document.close();
+      detail.textContent = "기반 빌드의 무결성을 확인하는 중";
+      let source = await gunzipText(bytes(parts.join("")));
+      if (await sha256(source) !== oldSha) throw new Error("기반 빌드의 SHA-256이 일치하지 않습니다.");
+      const patch = JSON.parse(await gunzipText(bytes(patchB64)));
+      if (patch.old_sha !== oldSha || patch.new_sha !== newSha || !Array.isArray(patch.ops)) throw new Error("핫픽스 명세가 손상됐습니다.");
+      patch.ops.forEach((op,index) => { source = replaceExactlyOnce(source, op.old, op.new, index); });
+      if (await sha256(source) !== newSha || !source.includes("function movementBasis()") || !source.includes("createInitialWights();") || !source.includes("Art Pass 0.3.2")) throw new Error("수정판 무결성 검사가 실패했습니다.");
+      document.open();document.write(source);document.close();
     })().catch(fail);
   })();
   </script>
