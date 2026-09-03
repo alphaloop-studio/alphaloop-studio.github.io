@@ -1,0 +1,12 @@
+{
+  "version": "0.3.1-public-hotfix",
+  "html_bytes": 87883,
+  "payload_bytes": 26978,
+  "base64_chars": 35972,
+  "chunks": 6,
+  "sha256": "766bff35725956fc301568f7c52d6909ba32a70932ac0af8da6f6ff813c83ad5",
+  "first_tap_guard": "stamp=-Infinity",
+  "deployment": "manual-compressed-payload",
+  "browser_qa": "pending-public-execution",
+  "device_gate": "pending-real-iphone-20-minute-run"
+}
