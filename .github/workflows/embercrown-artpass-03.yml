@@ -19,7 +19,7 @@ jobs:
   build-and-verify:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       BASE: mobile-prototypes/embercrown-artpass-02
       RECIPE: mobile-prototypes/embercrown-artpass-03-build
@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Reconstruct Art Pass 0.3 source
+      - name: Reconstruct Art Pass 0.3 source and apply first-tap hotfix
         shell: bash
         run: |
           set -euo pipefail
@@ -54,6 +54,23 @@ jobs:
           mkdir -p "$WORK/tools"
           cp "$RECIPE/package.json" "$WORK/package.json"
           cp "$RECIPE/tools/"* "$WORK/tools/"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          game_path = Path(os.environ["WORK"]) / "game.js"
+          source = game_path.read_text(encoding="utf-8")
+          unsafe = "function press(el,fn){let last=0;"
+          safe = "function press(el,fn){let last=-Infinity;"
+          if safe not in source:
+              if unsafe not in source:
+                  raise SystemExit("First-tap guard signature was not found; refusing an unverified build.")
+              source = source.replace(unsafe, safe, 1)
+              game_path.write_text(source, encoding="utf-8")
+          if source.count(safe) != 1:
+              raise SystemExit("First-tap guard must occur exactly once.")
+          print("First-tap hotfix verified: initial input cannot be suppressed by the duplicate-event guard.")
+          PY
           node --check "$WORK/game.js"
 
       - name: Prepare output tree
@@ -114,11 +131,12 @@ jobs:
           from pathlib import Path
           out = Path(os.environ['OUT'])
           payload = {
-              'version': '0.3.0',
+              'version': '0.3.1',
               'babylon': os.environ['BABYLON_VERSION'],
               'adventurers_revision': os.environ['ADVENTURERS_REV'],
               'skeletons_revision': os.environ['SKELETONS_REV'],
               'runtime_external_dependencies': 0,
+              'first_tap_hotfix': True,
               'model_files': sorted(p.name for p in (out/'assets/models').glob('*.glb')),
           }
           (out/'build-info.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
@@ -131,7 +149,7 @@ jobs:
           npm install --prefix "$WORK" --no-save --ignore-scripts playwright@1.55.0
           "$WORK/node_modules/.bin/playwright" install --with-deps chromium
 
-      - name: Browser QA — mobile interaction and boss phases
+      - name: Browser QA — local mobile and desktop flows
         shell: bash
         run: |
           set -euo pipefail
@@ -140,7 +158,7 @@ jobs:
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
           sleep 2
           EMBER_URL="http://127.0.0.1:4173/$OUT/index.html" \
-          EMBER_QA_OUT="$OUT/qa" \
+          EMBER_QA_OUT="$OUT/qa/local" \
           node "$WORK/tools/qa-browser.mjs"
 
       - name: Commit verified build
@@ -153,13 +171,54 @@ jobs:
           if git diff --cached --quiet; then
             echo "Build output unchanged."
           else
-            git commit -m "build: publish EMBERCROWN Art Pass 0.3"
+            git commit -m "build: publish EMBERCROWN Art Pass 0.3.1"
             git push origin HEAD:master
           fi
+          PUBLISHED_SHA="$(git rev-parse HEAD)"
+          echo "PUBLISHED_SHA=$PUBLISHED_SHA" >> "$GITHUB_ENV"
+          echo "Published commit: $PUBLISHED_SHA"
+
+      - name: Browser QA — immutable public URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          PUBLIC_URL="https://raw.githack.com/alphaloop-studio/alphaloop-studio.github.io/$PUBLISHED_SHA/$OUT/index.html?run=$GITHUB_RUN_ID"
+          echo "PUBLIC_URL=$PUBLIC_URL" >> "$GITHUB_ENV"
+          mkdir -p /tmp/ember-public-qa
+          ready=0
+          for attempt in $(seq 1 20); do
+            if curl -fLsS --max-time 30 "$PUBLIC_URL" -o /tmp/ember-public-index.html && grep -q "EMBERCROWN" /tmp/ember-public-index.html; then
+              ready=1
+              break
+            fi
+            echo "Public URL not ready yet (attempt $attempt/20)."
+            sleep 5
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "Public URL did not become readable: $PUBLIC_URL" >&2
+            exit 1
+          fi
+          EMBER_URL="$PUBLIC_URL" \
+          EMBER_QA_OUT="/tmp/ember-public-qa" \
+          node "$WORK/tools/qa-browser.mjs"
+          cp -R /tmp/ember-public-qa "$OUT/qa/public"
+
+      - name: Public deployment summary
+        shell: bash
+        run: |
+          {
+            echo "### EMBERCROWN Art Pass 0.3.1"
+            echo "- Local browser QA: passed"
+            echo "- Immutable public browser QA: passed"
+            echo "- Published commit: \`$PUBLISHED_SHA\`"
+            echo "- Public URL: $PUBLIC_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: EMBERCROWN_ARTPASS_0_3
-          path: ${{ env.OUT }}
+          name: EMBERCROWN_ARTPASS_0_3_1
+          path: |
+            ${{ env.OUT }}
+            /tmp/ember-public-qa
           if-no-files-found: error
           retention-days: 30
