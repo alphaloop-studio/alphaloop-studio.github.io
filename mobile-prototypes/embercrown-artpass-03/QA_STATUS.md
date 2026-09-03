@@ -2,17 +2,24 @@
 
 ## Completed
 
-- First-input duplicate guard changed from a zero timestamp to negative infinity.
+- The official build recipe patches the real input guard from `let stamp = 0;` to `let stamp = -Infinity;`.
 - Static QA rejects the unsafe first-tap signature.
 - Mobile and desktop browser QA scripts always emit a result file, including fatal failures.
 - A cache-stable public loader reconstructs the verified single-page build from six gzip/base64 payload fragments.
-- Reconstructed HTML SHA-256: `766bff35725956fc301568f7c52d6909ba32a70932ac0af8da6f6ff813c83ad5`.
+- Final reconstructed HTML SHA-256: `62262bea4150eff04b4d7bfd044123e6decad499916893ddf7e263477794b5a6`.
+- Local logic/input automation passed start, movement, attack, spell, dodge, oath progression, boss phases and victory using a Babylon API QA stub.
 
-## Still required before the mobile performance gate passes
+## Explicitly not yet passed
 
-- Execute the public URL in a real iPhone Safari session for at least 20 minutes.
-- Confirm start, joystick, attack, spell, dodge, oath progression, boss phases and victory.
-- Background Safari once, resume it, and confirm WebGL remains active.
-- Record sustained FPS, p95 frame time, context-loss count and device heat.
+- Public production-WebGL browser automation could not be executed in the available environment because outbound browser/DNS access is blocked and connector-originated commits did not create GitHub Actions runs.
+- Real iPhone Safari 20-minute performance, heat, background/resume and WebGL context-loss testing remains pending.
 
-Open the public URL with `?perf=1` to expose the in-game device diagnostics panel.
+## Real-device performance gate
+
+Open the public URL with `?perf=1` and play continuously for at least 20 minutes. The in-game gate passes only when:
+
+- average FPS is at least 30,
+- frame-time p95 is at most 50 ms,
+- WebGL context-loss count is zero.
+
+After the run, use the in-game copy button to export the device report.
