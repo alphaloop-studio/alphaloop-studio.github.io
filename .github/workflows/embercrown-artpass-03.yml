@@ -60,15 +60,15 @@ jobs:
 
           game_path = Path(os.environ["WORK"]) / "game.js"
           source = game_path.read_text(encoding="utf-8")
-          unsafe = "function press(el,fn){let last=0;"
-          safe = "function press(el,fn){let last=-Infinity;"
+          unsafe = "let stamp = 0;"
+          safe = "let stamp = -Infinity;"
           if safe not in source:
-              if unsafe not in source:
-                  raise SystemExit("First-tap guard signature was not found; refusing an unverified build.")
+              if source.count(unsafe) != 1:
+                  raise SystemExit("First-tap guard signature was not found exactly once; refusing an unverified build.")
               source = source.replace(unsafe, safe, 1)
               game_path.write_text(source, encoding="utf-8")
-          if source.count(safe) != 1:
-              raise SystemExit("First-tap guard must occur exactly once.")
+          if source.count(safe) != 1 or unsafe in source:
+              raise SystemExit("First-tap guard must be safe and occur exactly once.")
           print("First-tap hotfix verified: initial input cannot be suppressed by the duplicate-event guard.")
           PY
           node --check "$WORK/game.js"
