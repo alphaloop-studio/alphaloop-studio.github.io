@@ -1,0 +1,9 @@
+{
+  "name": "embercrown-cinder-oath-artpass-03",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Build and QA support for the EMBERCROWN Babylon.js vertical slice.",
+  "devDependencies": {
+    "playwright": "1.55.0"
+  }
+}
