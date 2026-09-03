@@ -1,0 +1,165 @@
+name: Build EMBERCROWN Art Pass 0.3
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "mobile-prototypes/embercrown-artpass-03-build/**"
+      - ".github/workflows/embercrown-artpass-03.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: embercrown-artpass-03
+  cancel-in-progress: true
+
+jobs:
+  build-and-verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE: mobile-prototypes/embercrown-artpass-02
+      RECIPE: mobile-prototypes/embercrown-artpass-03-build
+      WORK: /tmp/embercrown-artpass-03-src
+      OUT: mobile-prototypes/embercrown-artpass-03
+      BABYLON_VERSION: 9.23.0
+      ADVENTURERS_REV: 672074b73ba276876a19e8816ecdc5241817ab47
+      SKELETONS_REV: 15b62b9bad122f72926c10fb14d622c73819fa54
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reconstruct Art Pass 0.3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$WORK"
+          cp -R "$BASE" "$WORK"
+          rm -f "$WORK/BUILD_MANIFEST.md" "$WORK/PUBLIC_BROWSER_QA.md" "$WORK/PUBLIC_VERIFY.md" "$WORK/QA_REPORT.md"
+          cat "$RECIPE"/patch.part-* | base64 --decode | xz --decompress > /tmp/embercrown-artpass-03.patch
+          (cd "$WORK" && patch -p1 < /tmp/embercrown-artpass-03.patch)
+          mkdir -p "$WORK/tools"
+          cp "$RECIPE/package.json" "$WORK/package.json"
+          cp "$RECIPE/tools/"* "$WORK/tools/"
+          node --check "$WORK/game.js"
+
+      - name: Prepare output tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$OUT"
+          mkdir -p "$OUT/vendor" "$OUT/assets/models" "$OUT/assets/textures" "$OUT/qa" /tmp/ember-core /tmp/ember-loaders /tmp/ember-textures
+          cp "$WORK/index.html" "$WORK/styles.css" "$WORK/game.js" "$OUT/"
+          cp "$WORK/README.md" "$WORK/ART_DIRECTION.md" "$WORK/THIRD_PARTY_NOTICES.md" "$OUT/"
+
+      - name: Vendor pinned Babylon npm packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack "babylonjs@$BABYLON_VERSION" --pack-destination /tmp
+          npm pack "babylonjs-loaders@$BABYLON_VERSION" --pack-destination /tmp
+          tar -xzf "/tmp/babylonjs-$BABYLON_VERSION.tgz" -C /tmp/ember-core
+          tar -xzf "/tmp/babylonjs-loaders-$BABYLON_VERSION.tgz" -C /tmp/ember-loaders
+          cp /tmp/ember-core/package/babylon.js "$OUT/vendor/babylon-$BABYLON_VERSION.js"
+          cp /tmp/ember-loaders/package/babylonjs.loaders.min.js "$OUT/vendor/babylonjs.loaders-$BABYLON_VERSION.min.js"
+
+      - name: Mirror pinned CC0 character assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ADV="https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/$ADVENTURERS_REV/addons/kaykit_character_pack_adventures/Characters/gltf"
+          SKEL="https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0/$SKELETONS_REV/addons/kaykit_character_pack_skeletons/Characters/gltf"
+          curl --retry 3 --retry-delay 2 -fL "$ADV/Knight.glb" -o "$OUT/assets/models/Knight.glb"
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/Skeleton_Minion.glb" -o "$OUT/assets/models/Skeleton_Minion.glb"
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/Skeleton_Rogue.glb" -o "$OUT/assets/models/Skeleton_Rogue.glb"
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/Skeleton_Warrior.glb" -o "$OUT/assets/models/Skeleton_Warrior.glb"
+          curl --retry 3 --retry-delay 2 -fL "$ADV/knight_texture.png" -o /tmp/ember-textures/knight_texture.png
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/skeleton_texture.png" -o /tmp/ember-textures/skeleton_texture.png
+
+      - name: Generate EMBERCROWN palette textures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet pillow==12.0.0
+          python "$WORK/tools/recolor_textures.py" \
+            --knight /tmp/ember-textures/knight_texture.png \
+            --skeleton /tmp/ember-textures/skeleton_texture.png \
+            --out "$OUT/assets/textures"
+
+      - name: Static QA and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check "$OUT/game.js"
+          python "$WORK/tools/static-qa.py" "$OUT" | tee "$OUT/qa/static-qa.json"
+          (
+            cd "$OUT"
+            find . -type f ! -path './qa/*' -print0 | sort -z | xargs -0 sha256sum
+          ) > "$OUT/BUILD_MANIFEST.sha256"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          out = Path(os.environ['OUT'])
+          payload = {
+              'version': '0.3.0',
+              'babylon': os.environ['BABYLON_VERSION'],
+              'adventurers_revision': os.environ['ADVENTURERS_REV'],
+              'skeletons_revision': os.environ['SKELETONS_REV'],
+              'runtime_external_dependencies': 0,
+              'model_files': sorted(p.name for p in (out/'assets/models').glob('*.glb')),
+          }
+          (out/'build-info.json').write_text(json.dumps(payload, indent=2), encoding='utf-8')
+          PY
+
+      - name: Install browser QA dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --prefix "$WORK" --no-save --ignore-scripts playwright@1.55.0
+          "$WORK/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Browser QA — mobile interaction and boss phases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m http.server 4173 --bind 127.0.0.1 >/tmp/ember-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          sleep 2
+          EMBER_URL="http://127.0.0.1:4173/$OUT/index.html" \
+          EMBER_QA_OUT="$OUT/qa" \
+          node "$WORK/tools/qa-browser.mjs"
+
+      - name: Commit verified build
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "alphaloop-build-bot"
+          git config user.email "admin@alphaloop.dev"
+          git add "$OUT"
+          if git diff --cached --quiet; then
+            echo "Build output unchanged."
+          else
+            git commit -m "build: publish EMBERCROWN Art Pass 0.3"
+            git push origin HEAD:master
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EMBERCROWN_ARTPASS_0_3
+          path: ${{ env.OUT }}
+          if-no-files-found: error
+          retention-days: 30
