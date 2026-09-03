@@ -11,4 +11,4 @@ This folder reconstructs Art Pass 0.3 from the verified Art Pass 0.2 source, the
 
 The runtime output has no third-party CDN dependency. The build recipe remains auditable without duplicating large binary assets in source control.
 
-Build trigger revision: 2 (merge event).
+Build trigger revision: 3 (manual verification retry, 2026-09-03).
