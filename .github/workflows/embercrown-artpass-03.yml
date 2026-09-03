@@ -7,8 +7,6 @@ on:
       - "mobile-prototypes/embercrown-artpass-03-build/**"
       - ".github/workflows/embercrown-artpass-03.yml"
   workflow_dispatch:
-  issues:
-    types: [opened]
 
 permissions:
   contents: write
@@ -19,7 +17,7 @@ concurrency:
 
 jobs:
   build-and-verify:
-    if: github.actor != 'github-actions[bot]' && (github.event_name != 'issues' || startsWith(github.event.issue.title, '[EMBERCROWN QA]'))
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
