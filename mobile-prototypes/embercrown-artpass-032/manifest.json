@@ -1,0 +1,17 @@
+{
+  "version": "0.3.2-controls-progression-hotfix",
+  "single_html_bytes": 90584,
+  "single_html_sha256": "10784ec8783d0c604e40b3bbf3f61ef9e95dfc4a1c7c7d6ba601f6ddbb30b441",
+  "payload_chunks": 7,
+  "payload_base64_chars": 36916,
+  "deployment": "chunked gzip/base64 loader",
+  "controls": "camera-relative WASD/arrows and joystick",
+  "progression": "initial wights spawn only after oathstone; remaining count is re-evaluated after every kill",
+  "qa": {
+    "controls_and_progression": "passed",
+    "chunked_loader": "passed",
+    "console_errors": 0,
+    "page_errors": 0,
+    "production_webgl": "not executed in sandbox because outbound browser access is blocked"
+  }
+}
