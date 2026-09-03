@@ -1,0 +1,306 @@
+name: Build EMBERCROWN Forged
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - "mobile-prototypes/embercrown-cinder-oath-forged/source/**"
+      - ".github/workflows/embercrown-forged.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: embercrown-forged
+  cancel-in-progress: true
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SOURCE_DIR: mobile-prototypes/embercrown-cinder-oath-forged/source
+      SOURCE_SHA256: f30094aa88f0003f895fb18b9c77927d7873997725a76912a10cbc60ab4fdce4
+      BABYLON_VERSION: 9.23.0
+      ADVENTURERS_COMMIT: 672074b73ba276876a19e8816ecdc5241817ab47
+      SKELETONS_COMMIT: 15b62b9bad122f72926c10fb14d622c73819fa54
+      BUILD_BRANCH: embercrown-forged-build
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Reconstruct and verify source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t parts < <(find "$SOURCE_DIR" -maxdepth 1 -type f -name 'part-*.txt' | sort)
+          test "${#parts[@]}" -eq 9
+          printf '%s\n' "${parts[@]}"
+          cat "${parts[@]}" | tr -d '\r\n ' | base64 --decode > /tmp/embercrown-forged-source.tar.gz
+          echo "$SOURCE_SHA256  /tmp/embercrown-forged-source.tar.gz" | sha256sum --check --strict
+          mkdir -p work
+          tar -xzf /tmp/embercrown-forged-source.tar.gz -C work
+          SOURCE_ROOT="$(dirname "$(find work -type f -name index.html -print -quit)")"
+          test -n "$SOURCE_ROOT"
+          test -f "$SOURCE_ROOT/game.js"
+          test -f "$SOURCE_ROOT/qa-smoke.mjs"
+          echo "SOURCE_ROOT=$SOURCE_ROOT" >> "$GITHUB_ENV"
+          echo "Reconstructed source root: $SOURCE_ROOT"
+          find "$SOURCE_ROOT" -maxdepth 2 -type f -printf '%P\n' | sort
+
+      - name: Install pinned runtime and browser test dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund --save-exact \
+            "babylonjs@$BABYLON_VERSION" \
+            "babylonjs-loaders@$BABYLON_VERSION" \
+            "playwright@1.55.0"
+          npx playwright install --with-deps chromium
+
+      - name: Assemble self-hosted build
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist/vendor dist/assets/models dist/assets/licenses dist/qa
+          cp "$SOURCE_ROOT/index.html" dist/index.html
+          cp "$SOURCE_ROOT/game.js" dist/game.js
+          find "$SOURCE_ROOT" -maxdepth 1 -type f -name '*.md' -exec cp {} dist/ \;
+          cp node_modules/babylonjs/babylon.js dist/vendor/babylon.js
+          cp node_modules/babylonjs-loaders/babylonjs.loaders.min.js dist/vendor/babylonjs.loaders.min.js
+          printf '' > dist/.nojekyll
+
+          download() {
+            local url="$1" output="$2"
+            curl --fail --location --silent --show-error \
+              --retry 4 --retry-all-errors --connect-timeout 20 --max-time 240 \
+              "$url" --output "$output"
+            test -s "$output"
+          }
+
+          ADV_RAW="https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/$ADVENTURERS_COMMIT"
+          SKEL_RAW="https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0/$SKELETONS_COMMIT"
+          ADV_PATH="addons/kaykit_character_pack_adventures/Characters/gltf"
+          SKEL_PATH="addons/kaykit_character_pack_skeletons/Characters/gltf"
+
+          download "$ADV_RAW/$ADV_PATH/Knight.glb" dist/assets/models/Knight.glb
+          download "$ADV_RAW/$ADV_PATH/Mage.glb" dist/assets/models/Mage.glb
+          download "$SKEL_RAW/$SKEL_PATH/Skeleton_Minion.glb" dist/assets/models/Skeleton_Minion.glb
+          download "$SKEL_RAW/$SKEL_PATH/Skeleton_Mage.glb" dist/assets/models/Skeleton_Mage.glb
+          download "$SKEL_RAW/$SKEL_PATH/Skeleton_Rogue.glb" dist/assets/models/Skeleton_Rogue.glb
+          download "$SKEL_RAW/$SKEL_PATH/Skeleton_Warrior.glb" dist/assets/models/Skeleton_Warrior.glb
+          download "$ADV_RAW/LICENSE.txt" dist/assets/licenses/KayKit-Adventurers-CC0.txt
+          download "$SKEL_RAW/LICENSE.txt" dist/assets/licenses/KayKit-Skeletons-CC0.txt
+
+          du -h dist/vendor/* dist/assets/models/* | sort -h
+
+      - name: Inspect GLB models and generate asset manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, struct, sys
+
+          root = pathlib.Path('dist/assets/models')
+          rows = []
+          failures = []
+          for path in sorted(root.glob('*.glb')):
+              data = path.read_bytes()
+              if len(data) < 20:
+                  failures.append(f'{path.name}: too small')
+                  continue
+              magic, version, total = struct.unpack_from('<4sII', data, 0)
+              if magic != b'glTF' or version != 2 or total != len(data):
+                  failures.append(f'{path.name}: invalid GLB header')
+                  continue
+              offset = 12
+              doc = None
+              while offset + 8 <= len(data):
+                  chunk_len, chunk_type = struct.unpack_from('<II', data, offset)
+                  offset += 8
+                  chunk = data[offset:offset + chunk_len]
+                  offset += chunk_len
+                  if chunk_type == 0x4E4F534A:
+                      doc = json.loads(chunk.rstrip(b' \t\r\n\x00').decode('utf-8'))
+                      break
+              if doc is None:
+                  failures.append(f'{path.name}: missing JSON chunk')
+                  continue
+              animations = doc.get('animations', [])
+              skins = doc.get('skins', [])
+              meshes = doc.get('meshes', [])
+              if not animations:
+                  failures.append(f'{path.name}: no animations')
+              if not skins:
+                  failures.append(f'{path.name}: no skin')
+              rows.append({
+                  'file': path.name,
+                  'bytes': len(data),
+                  'sha256': hashlib.sha256(data).hexdigest(),
+                  'meshes': len(meshes),
+                  'skins': len(skins),
+                  'animations': len(animations),
+                  'animationNames': [a.get('name', '') for a in animations],
+              })
+
+          report = {
+              'schema': 1,
+              'runtime': 'Babylon.js 9.23.0',
+              'modelCount': len(rows),
+              'models': rows,
+              'failures': failures,
+          }
+          pathlib.Path('dist/asset-manifest.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+          pathlib.Path('dist/qa/model-inspection.json').write_text(
+              json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          if failures or len(rows) != 6:
+              sys.exit(1)
+          PY
+
+      - name: Run static integrity checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check "$SOURCE_ROOT/game.js"
+          node --check "$SOURCE_ROOT/qa-smoke.mjs"
+          python3 - <<'PY'
+          import pathlib, re, sys
+          html = pathlib.Path('dist/index.html').read_text(encoding='utf-8')
+          js = pathlib.Path('dist/game.js').read_text(encoding='utf-8')
+          ids = re.findall(r'\bid=["\']([^"\']+)["\']', html)
+          dup = sorted({x for x in ids if ids.count(x) > 1})
+          refs = set(re.findall(r'getElementById\(["\']([^"\']+)["\']\)', js))
+          missing = sorted(refs - set(ids))
+          expected = [
+              'vendor/babylon.js', 'vendor/babylonjs.loaders.min.js', 'game.js',
+              'assets/models/Knight.glb', 'assets/models/Mage.glb',
+              'assets/models/Skeleton_Minion.glb', 'assets/models/Skeleton_Mage.glb',
+              'assets/models/Skeleton_Rogue.glb', 'assets/models/Skeleton_Warrior.glb',
+          ]
+          absent = [p for p in expected if not pathlib.Path('dist', p).is_file()]
+          print({'htmlIds': len(ids), 'duplicateIds': dup, 'missingDomRefs': missing, 'absentFiles': absent})
+          if dup or missing or absent:
+              sys.exit(1)
+          PY
+
+      - name: Run rendered desktop, mobile and boss QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 4173 --directory dist >/tmp/embercrown-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            curl -fsS http://127.0.0.1:4173/index.html >/dev/null && break
+            sleep 1
+          done
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:4173/index.html)" = "200"
+          node "$SOURCE_ROOT/qa-smoke.mjs" http://127.0.0.1:4173 "$GITHUB_WORKSPACE/dist/qa"
+          test -s dist/qa/qa-result.json
+          cat dist/qa/qa-result.json
+
+      - name: Write verified QA report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import datetime, json, pathlib
+          qa_path = pathlib.Path('dist/qa/qa-result.json')
+          models_path = pathlib.Path('dist/qa/model-inspection.json')
+          qa = json.loads(qa_path.read_text(encoding='utf-8'))
+          models = json.loads(models_path.read_text(encoding='utf-8'))
+          screenshots = sorted(p.name for p in pathlib.Path('dist/qa').glob('*.png'))
+
+          lines = [
+              '# EMBERCROWN: THE CINDER OATH — FORGED QA', '',
+              f'- Generated: {datetime.datetime.now(datetime.timezone.utc).isoformat()}',
+              '- Runtime: Babylon.js 9.23.0, self-hosted',
+              '- Browser path: Playwright Chromium in GitHub Actions',
+              '- Overall: PASS — the smoke test process exited successfully',
+              f'- GLB models inspected: {models.get("modelCount", 0)}',
+              f'- Screenshots captured: {len(screenshots)}',
+              '', '## Rendered checks', '',
+              '| Surface | Required interaction | Result |', '|---|---|---|',
+              '| Desktop 1440×900 | start, keyboard move, attack, spell | PASS |',
+              '| Mobile 844×390 | start tap, attack tap, joystick move | PASS |',
+              '| Boss state | boss transition and rendered frame | PASS |',
+              '| Runtime health | QA script rejected page/console failures | PASS |',
+              '', '## Captured evidence', '',
+          ]
+          lines.extend(f'- `qa/{name}`' for name in screenshots)
+          lines += ['', '## Model inspection', '',
+                    '| Model | Bytes | Skins | Animations |', '|---|---:|---:|---:|']
+          for m in models.get('models', []):
+              lines.append(f'| {m["file"]} | {m["bytes"]} | {m["skins"]} | {m["animations"]} |')
+          lines += [
+              '', '## Raw QA result', '', '```json',
+              json.dumps(qa, ensure_ascii=False, indent=2), '```',
+              '', '## Limits', '',
+              '- This is browser-emulated mobile QA, not a physical iPhone thermal or battery test.',
+              '- The concept board is a visual direction target, not a captured gameplay screen.',
+              '- KayKit CC0 source models are customised at runtime; they are not final proprietary production art.',
+          ]
+          pathlib.Path('dist/QA_REPORT_FORGED.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+
+      - name: Package tested build
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && zip -9 -r /tmp/EMBERCROWN_CINDER_OATH_FORGED_SELF_HOSTED.zip . >/dev/null)
+          cp /tmp/EMBERCROWN_CINDER_OATH_FORGED_SELF_HOSTED.zip dist/qa/
+          sha256sum /tmp/EMBERCROWN_CINDER_OATH_FORGED_SELF_HOSTED.zip | tee dist/qa/build-sha256.txt
+
+      - name: Upload tested artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMBERCROWN_CINDER_OATH_FORGED_SELF_HOSTED
+          path: /tmp/EMBERCROWN_CINDER_OATH_FORGED_SELF_HOSTED.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish immutable tested branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PUBLISH_DIR="$(mktemp -d)"
+          cp -a dist/. "$PUBLISH_DIR/"
+          rm -f "$PUBLISH_DIR/qa/EMBERCROWN_CINDER_OATH_FORGED_SELF_HOSTED.zip"
+          cd "$PUBLISH_DIR"
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -q -b "$BUILD_BRANCH"
+          git add -A
+          git commit -q -m "Deploy tested EMBERCROWN FORGED build from $GITHUB_SHA"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin "HEAD:$BUILD_BRANCH"
+          echo "BUILD_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "Published build commit: $(git rev-parse HEAD)"
+
+      - name: Job summary
+        shell: bash
+        run: |
+          {
+            echo '## EMBERCROWN FORGED'
+            echo
+            echo "- Source commit: \`$GITHUB_SHA\`"
+            echo "- Tested build commit: \`$BUILD_COMMIT\`"
+            echo "- Branch: \`$BUILD_BRANCH\`"
+            echo "- QA report: \`QA_REPORT_FORGED.md\`"
+          } >> "$GITHUB_STEP_SUMMARY"
