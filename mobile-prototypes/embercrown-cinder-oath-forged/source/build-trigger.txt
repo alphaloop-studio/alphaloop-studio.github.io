@@ -1,0 +1,2 @@
+Trigger FORGED build after workflow registration.
+Source payload is limited to part-00.txt through part-08.txt.
