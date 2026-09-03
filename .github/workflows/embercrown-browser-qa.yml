@@ -1,0 +1,198 @@
+name: EMBERCROWN Art Pass 0.3 Browser QA
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - "qa-triggers/embercrown-artpass-03.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: embercrown-artpass-03-browser-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE: mobile-prototypes/embercrown-artpass-02
+      RECIPE: mobile-prototypes/embercrown-artpass-03-build
+      WORK: /tmp/embercrown-artpass-03-src
+      OUT: /tmp/embercrown-artpass-03-out
+      BABYLON_VERSION: 9.23.0
+      ADVENTURERS_REV: 672074b73ba276876a19e8816ecdc5241817ab47
+      SKELETONS_REV: 15b62b9bad122f72926c10fb14d622c73819fa54
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reconstruct Art Pass 0.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$WORK" "$OUT"
+          cp -R "$BASE" "$WORK"
+          rm -f "$WORK/BUILD_MANIFEST.md" "$WORK/PUBLIC_BROWSER_QA.md" "$WORK/PUBLIC_VERIFY.md" "$WORK/QA_REPORT.md"
+          cat "$RECIPE"/patch.part-* | base64 --decode | xz --decompress > /tmp/embercrown-artpass-03.patch
+          (cd "$WORK" && patch -p1 < /tmp/embercrown-artpass-03.patch)
+          mkdir -p "$OUT/vendor" "$OUT/assets/models" "$OUT/assets/textures" "$OUT/qa"
+          cp "$WORK/index.html" "$WORK/styles.css" "$WORK/game.js" "$OUT/"
+          cp "$WORK/README.md" "$WORK/ART_DIRECTION.md" "$WORK/THIRD_PARTY_NOTICES.md" "$OUT/"
+
+      - name: Apply first-tap input fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path('/tmp/embercrown-artpass-03-out/game.js')
+          s = p.read_text(encoding='utf-8')
+          s2, n = re.subn(
+              r'(function\s+press\s*\([^)]*\)\s*\{\s*)let\s+last\s*=\s*0\s*;',
+              r'\1let last=-Infinity;',
+              s,
+              count=1,
+          )
+          if n == 0 and 'let last=-Infinity' not in s:
+              raise SystemExit('press() first-event guard was not found')
+          p.write_text(s2, encoding='utf-8')
+          PY
+          node --check "$OUT/game.js"
+
+      - name: Vendor pinned Babylon runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ember-core /tmp/ember-loaders
+          npm pack "babylonjs@$BABYLON_VERSION" --pack-destination /tmp >/dev/null
+          npm pack "babylonjs-loaders@$BABYLON_VERSION" --pack-destination /tmp >/dev/null
+          tar -xzf "/tmp/babylonjs-$BABYLON_VERSION.tgz" -C /tmp/ember-core
+          tar -xzf "/tmp/babylonjs-loaders-$BABYLON_VERSION.tgz" -C /tmp/ember-loaders
+          cp /tmp/ember-core/package/babylon.js "$OUT/vendor/babylon-$BABYLON_VERSION.js"
+          cp /tmp/ember-loaders/package/babylonjs.loaders.min.js "$OUT/vendor/babylonjs.loaders-$BABYLON_VERSION.min.js"
+
+      - name: Mirror pinned CC0 GLB assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ADV="https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0/$ADVENTURERS_REV/addons/kaykit_character_pack_adventures/Characters/gltf"
+          SKEL="https://raw.githubusercontent.com/KayKit-Game-Assets/KayKit-Character-Pack-Skeletons-1.0/$SKELETONS_REV/addons/kaykit_character_pack_skeletons/Characters/gltf"
+          curl --retry 3 --retry-delay 2 -fL "$ADV/Knight.glb" -o "$OUT/assets/models/Knight.glb"
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/Skeleton_Minion.glb" -o "$OUT/assets/models/Skeleton_Minion.glb"
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/Skeleton_Rogue.glb" -o "$OUT/assets/models/Skeleton_Rogue.glb"
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/Skeleton_Warrior.glb" -o "$OUT/assets/models/Skeleton_Warrior.glb"
+          curl --retry 3 --retry-delay 2 -fL "$ADV/knight_texture.png" -o /tmp/knight_texture.png
+          curl --retry 3 --retry-delay 2 -fL "$SKEL/skeleton_texture.png" -o /tmp/skeleton_texture.png
+
+      - name: Generate EMBERCROWN palette textures
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --quiet pillow==12.0.0
+          python "$RECIPE/tools/recolor_textures.py" \
+            --knight /tmp/knight_texture.png \
+            --skeleton /tmp/skeleton_texture.png \
+            --out "$OUT/assets/textures"
+
+      - name: Static QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check "$OUT/game.js"
+          python "$RECIPE/tools/static-qa.py" "$OUT" | tee "$OUT/qa/static-qa.json"
+          grep -q 'let last=-Infinity' "$OUT/game.js"
+          grep -q '__EMBER_QA__' "$OUT/game.js"
+          ! grep -R "https://cdn.babylonjs.com" "$OUT/index.html" "$OUT/game.js"
+
+      - name: Install Chromium QA dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$RECIPE/package.json" "$WORK/package.json"
+          npm install --prefix "$WORK" --no-save --ignore-scripts playwright@1.55.0
+          "$WORK/node_modules/.bin/playwright" install --with-deps chromium
+
+      - name: Browser QA — first tap and full game route
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$WORK/tools/qa-first-tap.mjs" <<'JS'
+          import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const url = process.env.EMBER_URL;
+          const out = process.env.EMBER_QA_OUT;
+          const browser = await chromium.launch({headless:true,args:['--use-angle=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+          const context = await browser.newContext({viewport:{width:844,height:390},deviceScaleFactor:2,isMobile:true,hasTouch:true,colorScheme:'dark'});
+          const page = await context.newPage();
+          const errors=[]; const warnings=[]; const pageErrors=[];
+          page.on('console',m=>{if(m.type()==='error')errors.push(m.text());if(m.type()==='warning')warnings.push(m.text())});
+          page.on('pageerror',e=>pageErrors.push(String(e)));
+          const response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+          await page.locator('#startButton').tap({timeout:5000});
+          await page.waitForFunction(()=>window.__EMBER_QA__?.ready?.()===true,{timeout:30000});
+          const start=await page.evaluate(()=>window.__EMBER_QA__.snapshot());
+          if(start.state!=='play')throw new Error('first tap did not enter play state: '+JSON.stringify(start));
+          const before=start.pos;
+          await page.evaluate(()=>window.__EMBER_QA__.move(1,0,700));
+          await page.waitForTimeout(850);
+          const moved=await page.evaluate(()=>window.__EMBER_QA__.snapshot());
+          const distance=Math.hypot(moved.pos.x-before.x,moved.pos.z-before.z);
+          if(distance<0.25)throw new Error('movement failed: '+distance);
+          const mp0=moved.mp;
+          await page.locator('#attackButton').tap();
+          await page.locator('#spellButton').tap();
+          await page.locator('#dodgeButton').tap();
+          await page.waitForTimeout(250);
+          const action=await page.evaluate(()=>window.__EMBER_QA__.snapshot());
+          if(!(action.mp<mp0))throw new Error('spell touch action did not consume MP');
+          await page.screenshot({path:`${out}/first-tap-playing.png`});
+          const result={httpStatus:response?.status(),start,moved,action,distance,errors,warnings,pageErrors};
+          fs.writeFileSync(`${out}/first-tap-qa.json`,JSON.stringify(result,null,2));
+          if(errors.length||pageErrors.length)throw new Error('browser errors: '+JSON.stringify({errors,pageErrors}));
+          await browser.close();
+          JS
+          python -m http.server 4173 --directory "$OUT" --bind 127.0.0.1 >/tmp/ember-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          sleep 2
+          EMBER_URL="http://127.0.0.1:4173/index.html" EMBER_QA_OUT="$OUT/qa" node "$WORK/tools/qa-first-tap.mjs"
+          EMBER_URL="http://127.0.0.1:4173/index.html?qa=1" EMBER_QA_OUT="$OUT/qa" node "$RECIPE/tools/qa-browser.mjs"
+
+      - name: Build manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd "$OUT" && find . -type f -print0 | sort -z | xargs -0 sha256sum) > "$OUT/BUILD_MANIFEST.sha256"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          out=Path('/tmp/embercrown-artpass-03-out')
+          data={
+            'version':'0.3.0-qa-hotfix',
+            'babylon':'9.23.0',
+            'first_tap_fix':True,
+            'models':sorted(p.name for p in (out/'assets/models').glob('*.glb')),
+            'runtime_external_dependencies':0,
+          }
+          (out/'build-info.json').write_text(json.dumps(data,indent=2),encoding='utf-8')
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EMBERCROWN_ARTPASS_0_3_BROWSER_QA
+          path: ${{ env.OUT }}
+          if-no-files-found: error
+          retention-days: 30
