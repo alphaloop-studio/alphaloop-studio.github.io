@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Alphaloop Apps</title>
+<meta name="description" content="Small, focused apps made by Alphaloop. Free on Google Play and the App Store." />
+<style>
+  :root { --bg: #faf8f4; --fg: #1b1a18; --muted: #6b675f; --card: #ffffff; --line: #e8e3da; --accent: #c8371b; --accent-ink: #ffffff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121113; --fg: #f2efe6; --muted: #a39e94; --card: #1c1b1e; --line: #2c2a2e; --accent: #ff6a4d; --accent-ink: #161214; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+  header h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  header p { margin: 0 0 24px; color: var(--muted); }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .app { display: grid; grid-template-columns: 64px 1fr; gap: 4px 14px; padding: 16px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 16px; }
+  .app img { width: 64px; height: 64px; border-radius: 14px; grid-row: span 2; }
+  .app h2 { font-size: 17px; margin: 0; }
+  .app p { margin: 2px 0 0; font-size: 14px; }
+  .app .meta { color: var(--muted); font-size: 12px; }
+  .stores { grid-column: 2; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .get, .ios { padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 14px; text-decoration: none; }
+  .get { background: var(--accent); color: var(--accent-ink); }
+  .ios { background: var(--fg); color: var(--bg); }
+  .get:focus-visible, .ios:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+  footer { margin-top: 28px; color: var(--muted); font-size: 13px; }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Alphaloop Apps</h1>
+    <p>Small, focused apps we build. Free on Google Play, some on the App Store too.</p>
+  </header>
+  <ul>
+      <li class="app">
+        <img src="icons/com.alphaloop.interval_timer.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Interval Timer: HIIT &amp; Tabata</h2>
+          <p>HIIT &amp; Tabata timer with big numbers and one-tap controls. Pro removes ads.</p>
+          <p class="meta">Health &amp; Fitness · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.interval_timer" href="https://play.google.com/store/apps/details?id=com.alphaloop.interval_timer">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/com.alphaloop.bloomplots.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Bloom Plots: Shikaku Puzzle</h2>
+          <p>Split the grid into rectangles by number. Offline logic puzzle, endless boards.</p>
+          <p class="meta">Puzzle · Android · iOS</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.bloomplots" href="https://play.google.com/store/apps/details?id=com.alphaloop.bloomplots">Get it on Google Play</a>
+          <a class="ios" href="https://apps.apple.com/us/app/bloom-plots/id6797268504">Download on the App Store</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/com.alphaloop.challengestreak.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Challenge Streak Habit Tracker</h2>
+          <p>Define a hard challenge, check in daily, and recover a missed day by rule.</p>
+          <p class="meta">Productivity · Android · iOS</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.challengestreak" href="https://play.google.com/store/apps/details?id=com.alphaloop.challengestreak">Get it on Google Play</a>
+          <a class="ios" href="https://apps.apple.com/us/app/%EC%B1%8C%EB%A6%B0%EC%A7%80-%EC%97%B0%EC%86%8D-%EA%B8%B0%EB%A1%9D/id6797268171">Download on the App Store</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/dev.alphaloop.dayproof.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>DayProof - Photo Habit Tracker</h2>
+          <p>Prove your routine with a photo, build streaks, and create recap collages.</p>
+          <p class="meta">Productivity · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="dev.alphaloop.dayproof" href="https://play.google.com/store/apps/details?id=dev.alphaloop.dayproof">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/dev.alphaloop.feelog.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Feelog - Mood Diary &amp; Wrapped</h2>
+          <p>Log a mood, fill your pixel calendar, and create a monthly Mood Wrapped.</p>
+          <p class="meta">Lifestyle · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="dev.alphaloop.feelog" href="https://play.google.com/store/apps/details?id=dev.alphaloop.feelog">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/com.alphaloop.hiverecordbook.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Hive Record Book</h2>
+          <p>Offline hive inspection log that tracks each colony&#x27;s treatment withdrawal.</p>
+          <p class="meta">Productivity · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.hiverecordbook" href="https://play.google.com/store/apps/details?id=com.alphaloop.hiverecordbook">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/com.alphaloop.hourglass_sand_timer.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Hourglass Sand Timer</h2>
+          <p>Ad-free full-screen sand timer. One-tap presets and custom-second timing.</p>
+          <p class="meta">Tools · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.hourglass_sand_timer" href="https://play.google.com/store/apps/details?id=com.alphaloop.hourglass_sand_timer">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/dev.alphaloop.lasersettingslog.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Laser Settings Log</h2>
+          <p>Save your tested laser settings by machine and material. Offline, no account.</p>
+          <p class="meta">Tools · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="dev.alphaloop.lasersettingslog" href="https://play.google.com/store/apps/details?id=dev.alphaloop.lasersettingslog">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/dev.alphaloop.liftcalc.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>LiftCalc - 1RM Calculator</h2>
+          <p>Estimate 1RM, plan warm-up sets, and load plates fast. Offline, no account.</p>
+          <p class="meta">Health &amp; Fitness · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="dev.alphaloop.liftcalc" href="https://play.google.com/store/apps/details?id=dev.alphaloop.liftcalc">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/dev.alphaloop.molip.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Molip - Focus Timer</h2>
+          <p>Protect focus sessions and build aesthetic study records without app blocking.</p>
+          <p class="meta">Productivity · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="dev.alphaloop.molip" href="https://play.google.com/store/apps/details?id=dev.alphaloop.molip">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/com.alphaloop.pantryexpiryguard.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Pantry Expiry Date Tracker</h2>
+          <p>Track dates on opened food and cosmetics, with quantity, and be warned in time.</p>
+          <p class="meta">House &amp; Home · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.pantryexpiryguard" href="https://play.google.com/store/apps/details?id=com.alphaloop.pantryexpiryguard">Get it on Google Play</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/com.alphaloop.renewalwatch.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Subscription Renewal Tracker</h2>
+          <p>See renewal dates before they charge you. Decide to keep or cancel in time.</p>
+          <p class="meta">Productivity · Android · iOS</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="com.alphaloop.renewalwatch" href="https://play.google.com/store/apps/details?id=com.alphaloop.renewalwatch">Get it on Google Play</a>
+          <a class="ios" href="https://apps.apple.com/us/app/renewal-watch-subscriptions/id6797264801">Download on the App Store</a>
+        </div>
+      </li>
+      <li class="app">
+        <img src="icons/dev.alphaloop.type_in_metronome_28.png" alt="" width="64" height="64" loading="lazy" />
+        <div class="body">
+          <h2>Type-In Metronome: BPM Tempo</h2>
+          <p>Type any BPM from 30 to 300 and start. Tap tempo, song presets, visual beat.</p>
+          <p class="meta">Music &amp; Audio · Android</p>
+        </div>
+        <div class="stores">
+          <a class="get" data-id="dev.alphaloop.type_in_metronome_28" href="https://play.google.com/store/apps/details?id=dev.alphaloop.type_in_metronome_28">Get it on Google Play</a>
+        </div>
+      </li>
+  </ul>
+  <footer>Made by Alphaloop · <a href="mailto:admin@alphaloop.dev">admin@alphaloop.dev</a></footer>
+</main>
+<script>
+  // Tag each Play link with where the visitor came from, so Play Console can attribute installs.
+  var src = (new URLSearchParams(location.search).get("src") || "web").replace(/[^a-z0-9_-]/gi, "").slice(0, 20) || "web";
+  document.querySelectorAll("a.get").forEach(function (a) {
+    a.href += "&referrer=" + encodeURIComponent("utm_source=" + src + "&utm_medium=bio&utm_campaign=apps_page&utm_content=" + a.dataset.id);
+  });
+</script>
+</body>
+</html>
